@@ -20,8 +20,10 @@ const TOKEN_PATH = 'token.json';
  * given callback function.
  * @param {Object} credentials The authorization client credentials.
  * @param {function} callback The callback to call with the authorized client.
+ * @param visits amount of visits of the game
+ * @param currentPlaying amount of people currently in the game
  */
-function authorize(credentials, callback, visits) {
+function authorize(credentials, callback, visits, currentPlaying) {
     const {client_secret, client_id, redirect_uris} = credentials.installed;
     const oAuth2Client = new google.auth.OAuth2(
         client_id, client_secret, redirect_uris[0]);
@@ -29,18 +31,20 @@ function authorize(credentials, callback, visits) {
     // Check if we have previously stored a token.
     fs.readFile(TOKEN_PATH, (err, token) => {
         if (err) return getNewToken(oAuth2Client, callback);
-        oAuth2Client.setCredentials(JSON.parse(token));
-        callback(oAuth2Client, visits);
+        oAuth2Client.setCredentials(JSON.parse(token.toString()));
+        callback(oAuth2Client, visits, currentPlaying);
     });
 }
 
 /**
  * Get and store new token after prompting for user authorization, and then
  * execute the given callback with the authorized OAuth2 client.
- * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback for the authorized client.
+ * @param {OAuth2Client} oAuth2Client The OAuth2 client to get token for.
+ * @param {Function} callback The callback for the authorized client.
+ * @param visits amount of visits of the game
+ * @param currentPlaying amount of people currently in the game
  */
-function getNewToken(oAuth2Client, callback, visits) {
+function getNewToken(oAuth2Client, callback, visits, currentPlaying) {
     const authUrl = oAuth2Client.generateAuthUrl({
         access_type: 'offline',
         scope: SCOPES,
@@ -60,14 +64,14 @@ function getNewToken(oAuth2Client, callback, visits) {
                 if (err) return console.error(err);
                 console.log('Token stored to', TOKEN_PATH);
             });
-            callback(oAuth2Client, visits);
+            callback(oAuth2Client, visits, currentPlaying);
         });
     });
 }
 
-function addLine(auth, visits) {
+function addLine(auth, visits, currentPlaying) {
     const sheets = google.sheets({version: 'v4', auth});
-    var date = new Date();
+    let date = new Date();
     sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetID,
         auth: auth,
@@ -86,11 +90,12 @@ function addLine(auth, visits) {
                     ["" + date.getDate() + "-" + (+date.getMonth() + 1) + "-" + date.getFullYear() + " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds(),visits,
                         "=A" + (currentRow) + "-A" + (previousRow), "=B" + (currentRow) + "-B" + (previousRow),
                         "=D" + (previousRow + 1) + "/((SECOND(C" + (currentRow) + ")/60)+(MINUTE(C" + (currentRow) + ")))",
-                    "=10000000-B" + currentRow, "=Average(E" + (+currentRow - 29) + ":E" + currentRow + ")"]
+                    "=10000000-B" + currentRow, "=Average(E" + (+currentRow - 29) + ":E" + currentRow + ")",
+                    currentPlaying]
                 ]
             },
             auth: auth
-        }, (err, res2) => {
+        }, (err) => {
             if(err) return console.error(err);
         });
     }));
@@ -123,7 +128,7 @@ let repeatedRun = () => {
             fs.readFile('credentials.json', (err, content) => {
                 if (err) return console.log('Error loading client secret file:', err);
                 // Authorize a client with credentials, then call the Google Sheets API.
-                authorize(JSON.parse(content), addLine, visits);
+                authorize(JSON.parse(content.toString()), addLine, visits);
             });
 
         });
