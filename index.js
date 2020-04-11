@@ -5,12 +5,13 @@ const {google} = require('googleapis');
 
 console.log("Starting app");
 
+let spreadsheetID = "1a57y9eCqBWUF9l6QZ2qNjOzONtTlSCuvQEBHfWgYTTU";
+let gameUniverseID = "300039023";
+
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
-// The file token.json stores the user's access and refresh tokens, and is
-// created automatically when the authorization flow completes for the first
-// time.
+// The file token.json stores the user's access and refresh toke
 const TOKEN_PATH = 'token.json';
 
 // Load client secrets from a local file.
@@ -68,7 +69,7 @@ function addLine(auth, visits) {
     const sheets = google.sheets({version: 'v4', auth});
     var date = new Date();
     sheets.spreadsheets.values.get({
-        spreadsheetId: "1a57y9eCqBWUF9l6QZ2qNjOzONtTlSCuvQEBHfWgYTTU",
+        spreadsheetId: spreadsheetID,
         auth: auth,
         range: "Data"
     }, ((err, res) => {
@@ -76,7 +77,7 @@ function addLine(auth, visits) {
         let previousRow = +res.data.values.length;
         let currentRow = previousRow + 1;
         sheets.spreadsheets.values.append({
-            spreadsheetId: "1a57y9eCqBWUF9l6QZ2qNjOzONtTlSCuvQEBHfWgYTTU",
+            spreadsheetId: spreadsheetID,
             range: "Data",
             valueInputOption: 'USER_ENTERED',
             insertDataOption: 'INSERT_ROWS',
@@ -98,7 +99,7 @@ function addLine(auth, visits) {
 let repeatedRun = () => {
     let req = http.request({
         host: "games.roblox.com",
-        path: "/v1/games?universeIds=300039023",
+        path: "/v1/games?universeIds=" + gameUniverseID,
         method: "GET",
         headers: {
             "Accept": "application/json"
