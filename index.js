@@ -146,12 +146,14 @@ let repeatedRun = () => {
     req.end();
 };
 
-let latestRun = new Date().getTime() - 120000;
-setInterval(() => {
-    if((latestRun + 120000) < new Date().getTime()) {
-        latestRun = latestRun + 120000;
-        repeatedRun()
-    }
-}, 500);
+setTimeout(() => {
+    let latestRun = new Date().getTime() - 120000;
+    setInterval(() => {
+        if((latestRun + 120000) < new Date().getTime()) {
+            latestRun = latestRun + 120000;
+            repeatedRun()
+        }
+    }, 500);
+}, 1500 - new Date().getTime() % 1000);
 
 console.log("Loop done");
