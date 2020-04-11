@@ -140,10 +140,10 @@ let repeatedRun = () => {
     req.end();
 };
 
-let latestRun = 0;
+let latestRun = new Date().getTime() - 120000;
 setInterval(() => {
     if((latestRun + 120000) < new Date().getTime()) {
-        latestRun = new Date().getTime();
+        latestRun = latestRun + 120000;
         repeatedRun()
     }
 }, 500);
