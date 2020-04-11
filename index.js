@@ -125,10 +125,11 @@ let repeatedRun = () => {
             let fullJsonParsed = JSON.parse(fullJSON);
             let wantedData = fullJsonParsed.data[0];
             let visits = wantedData["visits"];
+            let playing = wantedData["playing"];
             fs.readFile('credentials.json', (err, content) => {
                 if (err) return console.log('Error loading client secret file:', err);
                 // Authorize a client with credentials, then call the Google Sheets API.
-                authorize(JSON.parse(content.toString()), addLine, visits);
+                authorize(JSON.parse(content.toString()), addLine, visits, playing);
             });
 
         });
