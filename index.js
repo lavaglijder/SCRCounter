@@ -7,6 +7,7 @@ console.log("Starting app");
 
 let spreadsheetID = "1a57y9eCqBWUF9l6QZ2qNjOzONtTlSCuvQEBHfWgYTTU";
 let gameUniverseID = "300039023";
+let gameUniverseIDAlpha = "1637106198";
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
@@ -30,7 +31,7 @@ function authorize(credentials, callback, visits, currentPlaying) {
 
     // Check if we have previously stored a token.
     fs.readFile(TOKEN_PATH, (err, token) => {
-        if (err) return getNewToken(oAuth2Client, callback);
+        if (err) return getNewToken(oAuth2Client, callback, visits, currentPlaying);
         oAuth2Client.setCredentials(JSON.parse(token.toString()));
         callback(oAuth2Client, visits, currentPlaying);
     });
@@ -90,8 +91,38 @@ function addLine(auth, visits, currentPlaying) {
                     ["" + date.getDate() + "-" + (+date.getMonth() + 1) + "-" + date.getFullYear() + " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds(),visits,
                         "=A" + (currentRow) + "-A" + (previousRow), "=B" + (currentRow) + "-B" + (previousRow),
                         "=D" + (previousRow + 1) + "/((SECOND(C" + (currentRow) + ")/60)+(MINUTE(C" + (currentRow) + ")))",
-                    "=10000000-B" + currentRow, "=Average(E" + (+currentRow - 29) + ":E" + currentRow + ")",
-                    currentPlaying]
+                        "=10000000-B" + currentRow, "=Average(E" + (+currentRow - 29) + ":E" + currentRow + ")",
+                        currentPlaying]
+                ]
+            },
+            auth: auth
+        }, (err) => {
+            if(err) return console.error(err);
+        });
+    }));
+}
+
+function addAlphaLine(auth, currentlyPlaying, visits) {
+    const sheets = google.sheets({version: 'v4', auth});
+    let date = new Date();
+    sheets.spreadsheets.values.get({
+        spreadsheetId: spreadsheetID,
+        auth: auth,
+        range: "SCR alpha logs"
+    }, ((err) => {
+        if(err) return console.error(err);
+        sheets.spreadsheets.values.append({
+            spreadsheetId: spreadsheetID,
+            range: "SCR alpha logs",
+            valueInputOption: 'USER_ENTERED',
+            insertDataOption: 'INSERT_ROWS',
+            resource: {
+                values: [
+                    [
+                        "" + date.getDate() + "-" + (+date.getMonth() + 1) + "-" + date.getFullYear() + " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds(),
+                        currentlyPlaying + "",
+                        visits + ""
+                    ]
                 ]
             },
             auth: auth
@@ -154,6 +185,57 @@ setTimeout(() => {
             repeatedRun()
         }
     }, 500);
-}, 1500 - new Date().getTime() % 1000);
+}, 100 + (1000 - new Date().getTime() % 1000));
+
+let latestPlaying = -1;
+
+setInterval(() => {
+    let req = http.request({
+        host: "games.roblox.com",
+        path: "/v1/games?universeIds=" + gameUniverseIDAlpha,
+        method: "GET",
+        headers: {
+            "Accept": "application/json"
+        }
+    }, res => {
+        if(res.statusCode !== 200) {
+            console.error("Err getting Status code" + res.statusCode);
+            return;
+        }
+        let fullJSON = "";
+
+        res.setEncoding('utf8');
+        res.on('data', function (chunk) {
+            fullJSON = fullJSON + chunk.toString()
+        });
+        // https://www.roblox.com/games/getgameinstancesjson?placeId=2923912706&startIndex=0&_=1586783983291
+
+        res.on("end", () => {
+            let fullJsonParsed = JSON.parse(fullJSON);
+            let wantedData = fullJsonParsed.data[0];
+            let visits = wantedData["visits"];
+            let playing = wantedData["playing"];
+            if(latestPlaying !== playing) {
+                fs.readFile('credentials.json', (err, content) => {
+                    if (err) return console.log('Error loading client secret file:', err);
+                    // Authorize a client with credentials, then call the Google Sheets API.
+                    authorize(JSON.parse(content.toString()), addAlphaLine, playing, visits);
+                });
+                latestPlaying = playing;
+            }
+
+        });
+
+        res.on("error", err => {
+            console.error(err);
+        });
+    });
+
+
+    req.on("error", err => {
+        console.error(err);
+    });
+    req.end();
+}, 1000 * 60 * 10);
 
 console.log("Loop done");
